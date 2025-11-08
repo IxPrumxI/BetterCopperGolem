@@ -5,9 +5,9 @@ import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 import ma.shaur.bettercoppergolem.config.ConfigHandler;
-import net.minecraft.entity.passive.CopperGolemBrain;
+import net.minecraft.world.entity.animal.coppergolem.CopperGolemAi;
 
-@Mixin(CopperGolemBrain.class)
+@Mixin(CopperGolemAi.class)
 public class CopperGolemBrainMixin 
 {
 	@ModifyConstant(method ="addIdleActivities", constant = @Constant(intValue = 8))
