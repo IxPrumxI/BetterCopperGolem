@@ -9,13 +9,13 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 @Mixin(ItemContainerContents.class)
-public interface ContainerComponentAccessor 
+public interface ItemContainerContentsAccessor 
 {
 	@Accessor
-	NonNullList<ItemStack> getStacks();
+	NonNullList<ItemStack> getItems();
 
 	@Mutable
 	@Final
-	@Accessor("stacks")
-	void setStacks(NonNullList<ItemStack> stacks);
+	@Accessor("items")
+	void setItems(NonNullList<ItemStack> stacks);
 }

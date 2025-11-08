@@ -44,74 +44,74 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 @Mixin(TransportItemsBetweenContainers.class)
-public abstract class MoveItemsTaskMixin 
+public abstract class TransportItemsBetweenContainersMixin 
 {
 	@Shadow
-	private static boolean canPickUpItem(PathfinderMob entity) { return false; }
+	private static boolean isPickingUpItems(PathfinderMob entity) { return false; }
 	
 	@Shadow
-	private static boolean canInsert(PathfinderMob entity, Container inventory) { return false; }
+	private static boolean matchesLeavingItemsRequirement(PathfinderMob entity, Container inventory) { return false; }
 	
 	@Shadow
-	private static boolean hasItem(Container inventory) { return false; }
+	private static boolean matchesGettingItemsRequirement(Container inventory) { return false; }
 	
 	@Shadow
-	private static boolean hasExistingStack(PathfinderMob entity, Container inventory) { return false; }
+	private static boolean hasItemMatchingHandItem(PathfinderMob entity, Container inventory) { return false; }
 	
 	@Shadow
-	protected abstract void resetVisitedPositions(PathfinderMob pathAwareEntity);
+	protected abstract void clearMemoriesAfterMatchingTargetFound(PathfinderMob pathAwareEntity);
 	
 	@Shadow
-	protected abstract void invalidateTargetStorage(PathfinderMob pathAwareEntity);
+	protected abstract void stopTargetingCurrentTarget(PathfinderMob pathAwareEntity);
 
 	@Shadow
-	protected abstract void markVisited(PathfinderMob entity, Level world, BlockPos pos);
+	protected abstract void setVisitedBlockPos(PathfinderMob entity, Level world, BlockPos pos);
 	
-	@ModifyConstant(method = "tickInteracting", constant = @Constant(intValue = 60))
+	@ModifyConstant(method = "onReachedTarget", constant = @Constant(intValue = 60))
 	public int interactionTime(int constant)
 	{
 		return ConfigHandler.getConfig().interactionTime;
 	}
 	
-	@ModifyConstant(method = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;isWithinRange", constant = @Constant(doubleValue = 0.5))
+	@ModifyConstant(method = "isWithinTargetDistance", constant = @Constant(doubleValue = 0.5))
 	public double verticalRange(double constant)
 	{
 		return ConfigHandler.getConfig().verticalRange - 1.5;
 	}
 	
-	@ModifyConstant(method = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;markVisited(Lnet/minecraft/entity/mob/PathAwareEntity;Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;)V", constant = @Constant(intValue = 10))
+	@ModifyConstant(method = "setVisitedBlockPos", constant = @Constant(intValue = 10))
 	private int maxChestCheckCount(int constant)
 	{
 		return ConfigHandler.getConfig().maxChestCheckCount;
 	}
 	
-	@ModifyConstant(method = "cooldown", constant = @Constant(intValue = 140))
+	@ModifyConstant(method = "enterCooldownAfterNoMatchingTargetFound", constant = @Constant(intValue = 140))
 	private int cooldownTime(int constant)
 	{
 		return ConfigHandler.getConfig().cooldownTime;
 	}
 
-	@ModifyArg(method = "tickInteracting", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;selectInteractionState(Lnet/minecraft/entity/mob/PathAwareEntity;Lnet/minecraft/inventory/Inventory;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;)V"), index = 2)
+	@ModifyArg(method = "onReachedTarget", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers;doReachedTargetInteraction"), index = 2)
 	private BiConsumer<PathfinderMob, Container> pickupItemCallback(BiConsumer<PathfinderMob, Container> pickupItemCallback)
 	{
-		return this::betterTakeStack;
+		return this::betterPickUpItems;
 	}
 	
-	@ModifyVariable(method = "getStorageFor", at = @At(value = "STORE"), ordinal = 1)
+	@ModifyVariable(method = "isTargetValidToPick", at = @At(value = "STORE"), ordinal = 1)
 	private boolean betterTestContainer(boolean valid, @Local() PathfinderMob entity, @Local TransportItemTarget storage)
 	{
 		return ConfigHandler.getConfig().matchOxidationLevel && entity instanceof CopperGolem copperGolem ? storage.state().getBlock() instanceof CopperChestBlock chest && chest.getState() == copperGolem.getWeatherState() : valid;
 	}
 	
-	private void betterTakeStack(PathfinderMob entity, Container inventory) 
+	private void betterPickUpItems(PathfinderMob entity, Container inventory) 
 	{
-		ItemStack itemStack = betterExtractStack(entity, inventory);
+		ItemStack itemStack = betterPickupItemFromContainer(entity, inventory);
 		entity.setItemSlot(EquipmentSlot.MAINHAND, itemStack);
 		entity.setGuaranteedDrop(EquipmentSlot.MAINHAND);
-		if(!(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.getLastItemStack(), itemStack))) this.resetVisitedPositions(entity);
+		if(!(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.getLastItemStack(), itemStack))) this.clearMemoriesAfterMatchingTargetFound(entity);
 	}
 	
-	private static ItemStack betterExtractStack(PathfinderMob entity, Container inventory) 
+	private static ItemStack betterPickupItemFromContainer(PathfinderMob entity, Container inventory) 
 	{
 		int i = 0, firstMatch = -1, matchAmmount = 0;
 		Config config = ConfigHandler.getConfig();
@@ -134,27 +134,27 @@ public abstract class MoveItemsTaskMixin
 		return firstMatch < 0 ? ItemStack.EMPTY : inventory.removeItem(firstMatch, matchAmmount);
 	}
 	
-	@ModifyArg(method = "tickInteracting", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;selectInteractionState(Lnet/minecraft/entity/mob/PathAwareEntity;Lnet/minecraft/inventory/Inventory;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;Ljava/util/function/BiConsumer;)V"), index = 4)
+	@ModifyArg(method = "onReachedTarget", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers;doReachedTargetInteraction"), index = 4)
 	private BiConsumer<PathfinderMob, Container> placeItemCallback(BiConsumer<PathfinderMob, Container> pickupItemCallback)
 	{
-		return this::betterPlaceStack;
+		return this::betterPutDownItem;
 	}
 
-	private void betterPlaceStack(PathfinderMob entity, Container inventory) 
+	private void betterPutDownItem(PathfinderMob entity, Container inventory) 
 	{
-		ItemStack itemStack = betterInsertStack(entity, inventory);
+		ItemStack itemStack = betterAddItemsToContainer(entity, inventory);
 		entity.setItemSlot(EquipmentSlot.MAINHAND, itemStack);
 		if (itemStack.isEmpty()) 
 		{
-			if(!(entity instanceof LastItemDataHolder)) this.resetVisitedPositions(entity);
+			if(!(entity instanceof LastItemDataHolder)) this.clearMemoriesAfterMatchingTargetFound(entity);
 		} 
 		else 
 		{
-			this.invalidateTargetStorage(entity);
+			this.stopTargetingCurrentTarget(entity);
 		}
 	}
 
-	private static ItemStack betterInsertStack(PathfinderMob entity, Container inventory)
+	private static ItemStack betterAddItemsToContainer(PathfinderMob entity, Container inventory)
 	{
 		int i = 0;
 		ItemStack hand = entity.getMainHandItem();
@@ -202,7 +202,7 @@ public abstract class MoveItemsTaskMixin
 				else if(componentMap.has(DataComponents.CONTAINER))
 				{
 					ItemContainerContents component = componentMap.get(DataComponents.CONTAINER);
-					List<ItemStack> stacks = ((ContainerComponentAccessor)(Object) component).getStacks();
+					List<ItemStack> stacks = ((ItemContainerContentsAccessor)(Object) component).getItems();
 					int j = 0;
 					for(; j < stacks.size(); j++)
 					{
@@ -237,7 +237,7 @@ public abstract class MoveItemsTaskMixin
 							list.set(j, stacks.get(j));
 						}
 						list.set(j, hand);
-						((ContainerComponentAccessor)(Object) component).setStacks(list); 
+						((ItemContainerContentsAccessor)(Object) component).setItems(list); 
 						if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
 						return ItemStack.EMPTY;
 					}
@@ -250,12 +250,12 @@ public abstract class MoveItemsTaskMixin
 	}
 
 	//Kinda silly, can't think of a better way for now
-	@Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;markVisited(Lnet/minecraft/entity/mob/PathAwareEntity;Lnet/minecraft/world/World;Lnet/minecraft/util/math/BlockPos;)V"))
-	private void betterMarkVisited(TransportItemsBetweenContainers moveItemsTask, PathfinderMob entity, Level world, BlockPos pos, ServerLevel paramWorld, PathfinderMob paramEntity)
+	@Redirect(method = "updateInvalidTarget", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers;setVisitedBlockPos"))
+	private void betterSetVisitedBlockPos(TransportItemsBetweenContainers moveItemsTask, PathfinderMob entity, Level world, BlockPos pos, ServerLevel paramWorld, PathfinderMob paramEntity)
 	{
 		if(!(entity instanceof LastItemDataHolder)) 
 		{
-			markVisited(entity, world, pos);
+			setVisitedBlockPos(entity, world, pos);
 			return;
 		}
 		
@@ -269,20 +269,20 @@ public abstract class MoveItemsTaskMixin
 
 		if(inventory != null)
 		{
-			if(canPickUpItem(entity)) 
+			if(isPickingUpItems(entity)) 
 			{
-				if (!hasItem(inventory)) markVisited(entity, world, pos);
+				if (!matchesGettingItemsRequirement(inventory)) setVisitedBlockPos(entity, world, pos);
 			}
-			else if(!canInsert(entity, inventory))
+			else if(!matchesLeavingItemsRequirement(entity, inventory))
 			{
-				markVisited(entity, world, pos);
+				setVisitedBlockPos(entity, world, pos);
 			}
 		}
 	}
 	
 	//I am become lag, the destroyer of TPS
-	@Redirect(method = "canInsert", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/ai/brain/task/MoveItemsTask;hasExistingStack(Lnet/minecraft/entity/mob/PathAwareEntity;Lnet/minecraft/inventory/Inventory;)Z"))
-	private static boolean betterHasExistingStack(PathfinderMob entity, Container inventory, PathfinderMob paramEntity, Container paramInventory)
+	@Redirect(method = "matchesLeavingItemsRequirement", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers;hasItemMatchingHandItem"))
+	private static boolean betterHasItemMatchingHandItem(PathfinderMob entity, Container inventory, PathfinderMob paramEntity, Container paramInventory)
 	{
 		ItemStack hand = entity.getMainHandItem();
 		Config config = ConfigHandler.getConfig();
@@ -362,7 +362,7 @@ public abstract class MoveItemsTaskMixin
 						shouldPlace = config.allowIndividualItemsMatchContainerContents;
 						if(config.allowInsertingItemsIntoContainers)
 						{
-							List<ItemStack> stacks = ((ContainerComponentAccessor)(Object) component).getStacks();
+							List<ItemStack> stacks = ((ItemContainerContentsAccessor)(Object) component).getItems();
 							int i = 0;
 							for(ItemStack content : stacks)
 							{

@@ -8,9 +8,9 @@ import ma.shaur.bettercoppergolem.config.ConfigHandler;
 import net.minecraft.world.entity.animal.coppergolem.CopperGolemAi;
 
 @Mixin(CopperGolemAi.class)
-public class CopperGolemBrainMixin 
+public class CopperGolemAiMixin 
 {
-	@ModifyConstant(method ="addIdleActivities", constant = @Constant(intValue = 8))
+	@ModifyConstant(method ="initIdleActivity", constant = @Constant(intValue = 8))
 	private static int verticalHeight(int constant)
 	{
 		return ConfigHandler.getConfig().verticalRange + 10;

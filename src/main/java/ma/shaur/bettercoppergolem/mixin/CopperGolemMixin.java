@@ -16,25 +16,25 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 @Mixin(CopperGolem.class)
-public class CopperGolemEntityMixin implements LastItemDataHolder
+public class CopperGolemMixin implements LastItemDataHolder
 {
 	//An item for optimizing selection(select same type of items first for faster sorting and item batching
 	//Maybe move to CopperGolemBrain an store as a memory? 
 	private ItemStack lastItemStack = ItemStack.EMPTY;
 
-	@Inject(method = "writeCustomData(Lnet/minecraft/storage/WriteView;)V", at = @At("TAIL"))
+	@Inject(method = "addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V", at = @At("TAIL"))
 	public void writeCustomData(ValueOutput view, CallbackInfo info) 
 	{
 		view.store("last_item_stack", ItemStack.OPTIONAL_CODEC, lastItemStack);
 	}
 
-	@Inject(method = "readCustomData(Lnet/minecraft/storage/ReadView;)V", at = @At("TAIL"))
+	@Inject(method = "readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V", at = @At("TAIL"))
 	public void readCustomData(ValueInput view, CallbackInfo info)
 	{
 		view.read("last_item_stack", ItemStack.OPTIONAL_CODEC);
 	}
 	
-	@Inject(method = "interactMob", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/passive/CopperGolemEntity;setStackInHand(Lnet/minecraft/util/Hand;Lnet/minecraft/item/ItemStack;)V", shift = At.Shift.AFTER))
+	@Inject(method = "mobInteract", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/animal/coppergolem/CopperGolem;setItemInHand(Lnet/minecraft/world/InteractionHand;Lnet/minecraft/world/item/ItemStack;)V", shift = At.Shift.AFTER))
 	public void interactMob(Player player, InteractionHand hand, CallbackInfoReturnable<InteractionResult> info)
 	{
 		//No need to optimize for the same item since a player took it out of golem's hands
