@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 import ma.shaur.bettercoppergolem.config.ConfigHandler;
-import net.minecraft.world.entity.animal.coppergolem.CopperGolemAi;
+import net.minecraft.world.entity.animal.golem.CopperGolemAi;
 
 @Mixin(CopperGolemAi.class)
 public class CopperGolemAiMixin 
