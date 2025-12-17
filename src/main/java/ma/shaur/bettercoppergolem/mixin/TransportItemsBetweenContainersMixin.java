@@ -28,7 +28,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers;
 import net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers.TransportItemTarget;
-import net.minecraft.world.entity.animal.coppergolem.CopperGolem;
+import net.minecraft.world.entity.animal.golem.CopperGolem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.BundleItem;
 import net.minecraft.world.item.ItemStack;
