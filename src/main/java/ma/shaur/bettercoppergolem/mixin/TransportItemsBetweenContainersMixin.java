@@ -158,13 +158,16 @@ public abstract class TransportItemsBetweenContainersMixin
 		entity.setItemSlot(EquipmentSlot.MAINHAND, itemStack);
 		if (itemStack.isEmpty()) 
 		{
-			if(!(entity instanceof LastItemDataHolder)) this.clearMemoriesAfterMatchingTargetFound(entity);
+			if(!(entity instanceof LastItemDataHolder)) {
+				this.clearMemoriesAfterMatchingTargetFound(entity);
+			}
 		} 
 		else 
 		{
 			this.stopTargetingCurrentTarget(entity);
 			if(inventory instanceof BaseContainerBlockEntity blockEntity) setVisitedBlockPos(entity, entity.level(), blockEntity.getBlockPos());
 		}
+		entity.getBrain().eraseMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
 	}
 
 	private static ItemStack betterAddItemsToContainer(PathfinderMob entity, Container inventory)
@@ -269,14 +272,12 @@ public abstract class TransportItemsBetweenContainersMixin
 		Optional<TransportItemTarget> originalTarget = original.call(instance, serverLevel, pathfinderMob);
 		Brain<?> brain = pathfinderMob.getBrain();
 
-		Optional<PositionTracker> lastFreeSlotChest = brain.getMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
+		Optional<GlobalPos> lastFreeSlotChest = brain.getMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
 		Optional<TransportItemTarget> target = betterSetTransportTarget(pathfinderMob, brain, lastFreeSlotChest);
 
 		if (originalTarget.isPresent() || target.isEmpty()) {
-			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_ITEMS_LAST_HELD);
 			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS);
 			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST);
-			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
 			return originalTarget;
 		}
 
@@ -286,10 +287,10 @@ public abstract class TransportItemsBetweenContainersMixin
 
     @Unique
 	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-	private Optional<TransportItemTarget> betterSetTransportTarget(PathfinderMob pathfinderMob, Brain<?> brain, Optional<PositionTracker> target) {
+	private Optional<TransportItemTarget> betterSetTransportTarget(PathfinderMob pathfinderMob, Brain<?> brain, Optional<GlobalPos> target) {
 		if(target.isPresent())
 		{
-			TransportItemTarget possibleTarget = TransportItemTarget.tryCreatePossibleTarget(target.get().currentBlockPosition(), pathfinderMob.level());
+			TransportItemTarget possibleTarget = TransportItemTarget.tryCreatePossibleTarget(target.get().pos(), pathfinderMob.level());
 			if(possibleTarget != null)
 			{
 				return Optional.of(possibleTarget);
@@ -337,11 +338,7 @@ public abstract class TransportItemsBetweenContainersMixin
 		ItemStack hand = entity.getMainHandItem();
 		Config config = ConfigHandler.getConfig();
 
-		if (entity.getBrain().getMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST).orElse(false))
-		{
-			return true; // Forcefully insert into target chest
-		}
-
+		boolean forcefullyInsert = entity.getBrain().getMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST).orElse(false);
 		boolean emptySpaces = false, shouldPlace = false, shouldInsert = false;
 		for(ItemStack stack : inventory)
 		{
@@ -350,7 +347,7 @@ public abstract class TransportItemsBetweenContainersMixin
 			if(stack.isEmpty()) 
 			{
 				emptySpaces = true;
-				entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null));
+				entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS).orElse(null));
 				continue;
 			}
 			
@@ -360,7 +357,7 @@ public abstract class TransportItemsBetweenContainersMixin
 				if(stack.getCount() < stack.getMaxStackSize() && ItemStack.isSameItemSameComponents(stack, hand))
 				{
 					emptySpaces = true;
-					entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null));
+					entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS).orElse(null));
 					continue;
 				}
 			}
@@ -443,6 +440,6 @@ public abstract class TransportItemsBetweenContainersMixin
 			}
 		}
 
-		return shouldPlace && emptySpaces || shouldInsert;
+		return forcefullyInsert || (shouldPlace && emptySpaces || shouldInsert);
 	}
 }

@@ -17,7 +17,7 @@ public class CustomMemoryModuleType<U> extends MemoryModuleType<U> {
     public static CustomMemoryModuleType<ItemStack> TRANSPORT_ITEMS_LAST_HELD;
     public static CustomMemoryModuleType<GlobalPos> TRANSPORT_CURRENT_CHEST_POS;
     public static CustomMemoryModuleType<Boolean> TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST;
-    public static CustomMemoryModuleType<PositionTracker> TRANSPORT_LAST_FREE_SLOT_CHEST_POS;
+    public static CustomMemoryModuleType<GlobalPos> TRANSPORT_LAST_FREE_SLOT_CHEST_POS;
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public CustomMemoryModuleType(Optional<Codec<U>> optional) {
@@ -36,6 +36,6 @@ public class CustomMemoryModuleType<U> extends MemoryModuleType<U> {
         TRANSPORT_ITEMS_LAST_HELD = register("transport_items_last_held", ItemStack.CODEC);
         TRANSPORT_CURRENT_CHEST_POS = register("transport_current_chest_pos", GlobalPos.CODEC);
         TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST = register("transport_forcefully_insert", Codec.BOOL);
-        TRANSPORT_LAST_FREE_SLOT_CHEST_POS = register("transport_last_free_slot_chest_pos");
+        TRANSPORT_LAST_FREE_SLOT_CHEST_POS = register("transport_last_free_slot_chest_pos", GlobalPos.CODEC);
     }
 }
