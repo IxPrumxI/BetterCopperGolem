@@ -1,5 +1,6 @@
 package ma.shaur.bettercoppergolem;
 
+import ma.shaur.bettercoppergolem.custom.entity.ai.memory.CustomMemoryModuleType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,5 +16,6 @@ public class BetterCopperGolem implements ModInitializer
 	public void onInitialize() 
 	{
 		ConfigHandler.init();
+		CustomMemoryModuleType.init();
 	}
 }

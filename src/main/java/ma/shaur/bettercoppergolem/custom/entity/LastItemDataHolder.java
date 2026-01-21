@@ -4,7 +4,7 @@ import net.minecraft.world.item.ItemStack;
 
 public interface LastItemDataHolder 
 {
-	public ItemStack getLastItemStack();
+	public ItemStack betterCopperGolem$getLastItemStack();
 	
-	public void setLastItemStack(ItemStack lastItemStack);
+	public void betterCopperGolem$setLastItemStack(ItemStack lastItemStack);
 }

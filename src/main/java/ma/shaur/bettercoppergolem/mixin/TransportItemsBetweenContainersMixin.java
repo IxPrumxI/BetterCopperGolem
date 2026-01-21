@@ -1,11 +1,21 @@
 package ma.shaur.bettercoppergolem.mixin;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import ma.shaur.bettercoppergolem.custom.entity.ai.memory.CustomMemoryModuleType;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.world.entity.ai.Brain;
+import net.minecraft.world.entity.ai.behavior.PositionTracker;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -67,7 +77,7 @@ public abstract class TransportItemsBetweenContainersMixin
 
 	@Shadow
 	protected abstract void setVisitedBlockPos(PathfinderMob entity, Level world, BlockPos pos);
-	
+
 	@ModifyConstant(method = "onReachedTarget", constant = @Constant(intValue = 60))
 	public int interactionTime(int constant)
 	{
@@ -110,7 +120,7 @@ public abstract class TransportItemsBetweenContainersMixin
 		entity.setItemSlot(EquipmentSlot.MAINHAND, itemStack);
 		entity.setGuaranteedDrop(EquipmentSlot.MAINHAND);
 		inventory.setChanged();
-		if(!(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.getLastItemStack(), itemStack))) this.clearMemoriesAfterMatchingTargetFound(entity);
+		if(!(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.betterCopperGolem$getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.betterCopperGolem$getLastItemStack(), itemStack))) this.clearMemoriesAfterMatchingTargetFound(entity);
 	}
 	
 	private static ItemStack betterPickupItemFromContainer(PathfinderMob entity, Container inventory) 
@@ -126,7 +136,7 @@ public abstract class TransportItemsBetweenContainersMixin
 				firstMatch = i;
 				if(!(entity instanceof LastItemDataHolder)) break;
 			}
-			if(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.getLastItemStack(), itemStack))
+			if(entity instanceof LastItemDataHolder lastStackHolder && !lastStackHolder.betterCopperGolem$getLastItemStack().isEmpty() && ItemStack.isSameItem(lastStackHolder.betterCopperGolem$getLastItemStack(), itemStack))
 			{
 				return inventory.removeItem(i, Math.min(itemStack.getCount(), config.maxHeldItemStackSize));
 			}
@@ -169,7 +179,7 @@ public abstract class TransportItemsBetweenContainersMixin
 			if (itemStack.isEmpty()) 
 			{
 				inventory.setItem(i, hand);
-				if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+				if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 				return ItemStack.EMPTY;
 			}
 
@@ -182,7 +192,7 @@ public abstract class TransportItemsBetweenContainersMixin
 				inventory.setItem(i, itemStack);
 				if (hand.isEmpty()) 
 				{
-					if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+					if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 					return ItemStack.EMPTY;
 				}
 			}
@@ -199,7 +209,7 @@ public abstract class TransportItemsBetweenContainersMixin
 					
 					if (hand.isEmpty()) 
 					{
-						if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+						if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 						return ItemStack.EMPTY;
 					}
 				}
@@ -214,7 +224,7 @@ public abstract class TransportItemsBetweenContainersMixin
 						if(stack.isEmpty())
 						{
 							stacks.set(j, hand);
-							if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+							if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 							return ItemStack.EMPTY;
 						}
 						else if(ItemStack.isSameItemSameComponents(stack, hand))
@@ -227,7 +237,7 @@ public abstract class TransportItemsBetweenContainersMixin
 							
 							if (hand.isEmpty()) 
 							{
-								if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+								if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 								return ItemStack.EMPTY;
 							}
 						}
@@ -241,8 +251,8 @@ public abstract class TransportItemsBetweenContainersMixin
 							list.set(j, stacks.get(j));
 						}
 						list.set(j, hand);
-						((ItemContainerContentsAccessor)(Object) component).setItems(list); 
-						if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.setLastItemStack(handCopy);
+						((ItemContainerContentsAccessor)(Object) component).setItems(list);
+						if(entity instanceof LastItemDataHolder lastStackHolder) lastStackHolder.betterCopperGolem$setLastItemStack(handCopy);
 						return ItemStack.EMPTY;
 					}
 				}
@@ -251,6 +261,44 @@ public abstract class TransportItemsBetweenContainersMixin
 			i++;
 		}
 		return hand;
+	}
+
+	// Since we have exhausted all targets. We should go back to TRANSPORT_LAST_EMPTY_CHEST_POS or TRANSPORT_LAST_FREE_SLOT_CHEST_POS to place the item there forcefully.
+	@WrapOperation(method = "updateInvalidTarget", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/ai/behavior/TransportItemsBetweenContainers;getTransportTarget(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/PathfinderMob;)Ljava/util/Optional;"))
+	private Optional<TransportItemTarget> betterEnterCooldownAfterNoMatchingTargetFound(TransportItemsBetweenContainers instance, ServerLevel serverLevel, PathfinderMob pathfinderMob, Operation<Optional<TransportItemTarget>> original)
+	{
+		Optional<TransportItemTarget> originalTarget = original.call(instance, serverLevel, pathfinderMob);
+		Brain<?> brain = pathfinderMob.getBrain();
+
+		Optional<PositionTracker> lastFreeSlotChest = brain.getMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
+		Optional<PositionTracker> lastFullyEmptyChest = brain.getMemory(CustomMemoryModuleType.TRANSPORT_LAST_EMPTY_CHEST_POS);
+		Optional<TransportItemTarget> target = betterSetTransportTarget(pathfinderMob, brain, lastFullyEmptyChest).or(() -> betterSetTransportTarget(pathfinderMob, brain, lastFreeSlotChest));
+
+		if (originalTarget.isPresent() || target.isEmpty()) {
+			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_ITEMS_LAST_HELD);
+			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS);
+			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_LAST_EMPTY_CHEST_POS);
+			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST);
+			brain.eraseMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS);
+			return originalTarget;
+		}
+
+		brain.setMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST, true);
+		return target;
+	}
+
+    @Unique
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	private Optional<TransportItemTarget> betterSetTransportTarget(PathfinderMob pathfinderMob, Brain<?> brain, Optional<PositionTracker> target) {
+		if(target.isPresent())
+		{
+			TransportItemTarget possibleTarget = TransportItemTarget.tryCreatePossibleTarget(target.get().currentBlockPosition(), pathfinderMob.level());
+			if(possibleTarget != null)
+			{
+				return Optional.of(possibleTarget);
+			}
+		}
+		return Optional.empty();
 	}
 
 	//Kinda silly, can't think of a better way for now
@@ -262,7 +310,8 @@ public abstract class TransportItemsBetweenContainersMixin
 			setVisitedBlockPos(entity, world, pos);
 			return;
 		}
-		
+
+		entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS, GlobalPos.of(entity.level().dimension(), pos));
 		Container inventory = null;
 
 		BlockEntity blockEntity = world.getBlockEntity(pos);
@@ -291,7 +340,12 @@ public abstract class TransportItemsBetweenContainersMixin
 		ItemStack hand = entity.getMainHandItem();
 		Config config = ConfigHandler.getConfig();
 
-		boolean emptySpaces = false, shouldPlace = false, shouldInsert = false;
+		if (entity.getBrain().getMemory(CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST).orElse(false))
+		{
+			return true; // Forcefully insert into target chest
+		}
+
+		boolean emptySpaces = false, shouldPlace = false, shouldInsert = false, fullyEmpty = true;
 		for(ItemStack stack : inventory)
 		{
 			if(shouldPlace && emptySpaces || shouldInsert) return true;
@@ -299,8 +353,9 @@ public abstract class TransportItemsBetweenContainersMixin
 			if(stack.isEmpty()) 
 			{
 				emptySpaces = true;
+				entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null));
 				continue;
-			}
+			} else fullyEmpty = false;
 			
 			if(!hand.getComponents().has(DataComponents.BUNDLE_CONTENTS) && !hand.getComponents().has(DataComponents.CONTAINER) && ItemStack.isSameItem(stack, hand)) 
 			{
@@ -308,6 +363,7 @@ public abstract class TransportItemsBetweenContainersMixin
 				if(stack.getCount() < stack.getMaxStackSize() && ItemStack.isSameItemSameComponents(stack, hand))
 				{
 					emptySpaces = true;
+					entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS, entity.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null));
 					continue;
 				}
 			}
@@ -389,7 +445,12 @@ public abstract class TransportItemsBetweenContainersMixin
 				}
 			}
 		}
-		
+
+		if (fullyEmpty)
+		{
+			entity.getBrain().setMemory(CustomMemoryModuleType.TRANSPORT_LAST_EMPTY_CHEST_POS, entity.getBrain().getMemory(MemoryModuleType.LOOK_TARGET).orElse(null));
+		}
+
 		return shouldPlace && emptySpaces || shouldInsert;
 	}
 }
