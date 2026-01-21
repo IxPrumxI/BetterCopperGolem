@@ -47,7 +47,6 @@ public class CopperGolemAiMixin
 			CustomMemoryModuleType.TRANSPORT_ITEMS_LAST_HELD,
 			CustomMemoryModuleType.TRANSPORT_CURRENT_CHEST_POS,
 			CustomMemoryModuleType.TRANSPORT_FORCEFULLY_INSERT_INTO_TARGET_CHEST,
-			CustomMemoryModuleType.TRANSPORT_LAST_EMPTY_CHEST_POS,
 			CustomMemoryModuleType.TRANSPORT_LAST_FREE_SLOT_CHEST_POS
 	);
 }
